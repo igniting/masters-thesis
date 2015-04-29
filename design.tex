@@ -1,0 +1,4 @@
+\chapter{Design}
+\label{chap:design}
+
+Our design is inspired by Bitcask~\cite{sheehy2010bitcask}. The key idea is to use append only logs. Whenever a new value is inserted, it is appended to a file. We maintain an in-memory hash table which stores the offset of the value in that file.
