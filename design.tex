@@ -36,3 +36,23 @@ Reading is also sequential. First the \texttt{initRead} method is called which r
   \end{tabularx}
 \end{center}
 \end{table}
+
+\section{Garbage Collection}
+
+\begin{table}[hbt]
+\caption{Interface for garbage collection}
+\label{tab:interface-gc}
+\begin{center}
+  \begin{tabularx}{0.91\textwidth}{lX}
+    \hline\noalign{\smallskip}
+    Methods & Purpose \\
+    \noalign{\smallskip}
+    \hline
+    \noalign{\smallskip}
+    \texttt{startGC} & Starts garbage collection for the given BlobStore\\
+    \texttt{markBlobAsAccessible} & Marks the given blob as accessible\\
+    \texttt{endGC} & Ends the garbage collection by removing all the unaccessible blobs\\
+    \hline
+  \end{tabularx}
+\end{center}
+\end{table}
