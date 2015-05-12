@@ -1,4 +1,10 @@
 \chapter{Design}
 \label{chap:design}
 
-Our design is inspired by Bitcask~\cite{sheehy2010bitcask}. The key idea is to use append only logs. Whenever a new value is inserted, it is appended to a file. We maintain an in-memory hash table which stores the offset of the value in that file.
+We store all the large objects in separate files. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
+The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{old}. \textit{old} directory is used during garbage collection, which we will discuss later.
+
+\begin{table}
+\caption{Interface for operations on blob}
+\label{tab:interface-blob}
+\end{table}

@@ -1,0 +1,27 @@
+\chapter{Related Work}
+\label{chap:relatedwork}
+
+Large object files can either be stored directly in a database or we can store the path to the binary file and other metadata. In this section we will discuss few examples of both. We will also discuss merits and demerits of both the approaches.
+
+\section{Storing large objects in database}
+
+Exodus was one of the first databases to support storage of large object files~\cite{carey1986object}. It used B+ tree index on byte position within the object plus a collection of leaf (data) blocks. Exodus allowed searching for a range of bytes, inserting a sequence of bytes at a given point in the object, appending a sequence of bytes at the end of the object and to delete a sequence of bytes from a given point in the object.
+
+Popular relational databases like MySQL and PostgreSQL both provide data types to store large object files. In MySQL the data type is called BLOB, and has operations similar to that on a string. Corresponding data type in PostgreSQL is bytea.
+
+PostgreSQL also provides a BLOB data type which is quite different from MySQL's BLOB data type. It's implementation breaks large objects up into ``chunks'' and stores the chunks in rows in the database. A B-tree index guarantees fast searches for the correct chunk number when doing random access reads and writes.
+
+A similar idea is used by MongoDB, which is a document database. It also divides the large object into ``chunks''. It uses GridFS specification for this~\cite{hows2014gridfs}. GridFS works by storing the information about the file (called metadata) in the files collection. The data itself is broken down into pieces called chunks that are stored in the chunks collection.
+
+\section{Storing metadata and filename in database}
+
+Another approach to store large objects is to store only the filename and some metadata in the database. In this case the application has to take care of the all externally attached files as well as the security settings.
+
+\section{Comparison of both approaches}
+Both the approaches have their own benefits and disadvantages.
+
+\subsection{Performance}
+When we just store the filename in database, we skip the database layer altogether during file read and write operations. In the paper To BLOB or Not To BLOB ~\cite{sears2007blob}, performance of SQL Server and NTFS has been compared. The results showed that the database gave higher throughputs for objects for relatively small size (< 1MB).
+
+\subsection{Security}
+Security and access controls are simplified when the data is directly stored in the database. When accessing the files directly, security settings between file system and database are independent from each other.
