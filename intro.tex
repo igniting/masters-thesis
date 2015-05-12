@@ -1,8 +1,18 @@
 \chapter{Introduction}
 \label{chap:intro}
 
-Database refers to a collection of information that exists overs a long period. A Database Management System (DBMS) is a tool for creating and managing large amount of data efficiently. Early database management systems evolved from file systems. These database systems used tree-based and the graph-based models for describing the structure of the information in a database.
-Database systems changed significantly following a famous paper written by Ted Codd in 1970~\cite{codd1970relational}. Codd proposed that database systems should present the user with a view of data organized as tables called relations. This paper was foundation for many relational databases like MySQL, PostgreSQL which are very popular even today.
-An essential feature of relational database systems is that they provide atomicity, consistency, isolation and durability guarantees (also known as ACID properties).
+Database refers to a collection of information that exists overs a long period.
+A Database Management System (DBMS) is a tool for creating and managing large amount of data efficiently.
+Early database management systems evolved from file systems. These database systems used tree-based and the graph-based models for describing the structure of the information in a database.
+
+Database systems changed significantly following a famous paper written by Ted Codd in 1970~\cite{codd1970relational}. Codd proposed that database systems should present the user with a view of data organized as tables called relations. This paper was foundation for popular relational databases like MySQL and PostgreSQL.
+
+However, many of the web applications do not require the complex querying and management functionality offered by a Relational Database Management System (RDBMS). This among other reasons gave rise to NoSQL (Not only SQL) databases. These databases can be classified based on the data models used by them. Amazon's Dynamo~\cite{decandia2007dynamo} is a key-value store. In key-value stores records are stored and retrieved using a key that uniquely identifies the record.
+MongoDB~\cite{chodorow2013mongodb} on the other hand is a document-oriented database. Document-oriented databases are designed for managing document-oriented information, also known as semi-structured data.
+
+Today's web application also work with large files like images, music, videos etc. Size of these files can vary from few MBs to tens of GBs. The application developer can decide to store these files directly into the one of the databases mentioned above or store it as a file and save the filename in the database.
+
+In this thesis, we explore the second option and provide a simple interface written in \textit{Haskell} to store large files. We also provide an interface for garbage collection of deleted blobs. We try to provide concurrency without using locks as much as possible.
 
 \section{Organization of the thesis}
+Chapter 2 discusses the approach of storing large files in databases. It also provides a background for this thesis work. In Chapter 3, we present our design. Chapter 4 describes our implementation. We conclude and present the future work in Chapter 5.
