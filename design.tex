@@ -1,16 +1,21 @@
 \chapter{Design}
 \label{chap:design}
 
-We store all the large objects in separate files. Our design is inspired from the maildir format~\cite{bernstein1995using}. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
+Our design is inspired from the maildir format~\cite{bernstein1995using}. maildir format stores each message in a separate file with a unique name. All the partially delivered mails are stored in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory it moves them to \textit{cur}.
+
+Similar to maildir, we also store all large objects in separate files. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
 The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{old}. We will discuss purpose of this directories later in this chapter.
 
+\section{Initializing the BlobStore}
+Before starting to create blobs inside a directory, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created. We provide a method \texttt{initBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
+
 \section{Creating a Blob}
-We provide a method called \texttt{createBlob} for creating a new blob. It takes a BlobStore as a parameter and returns a WriteContext. WriteContext contains the file handle of just created blob among other things. All the new blobs are created in the \textit{tmp} folder. We use UUID-4 to give unique names to the newly created blobs.
+We provide a method called \texttt{createBlob} for creating a new blob. It takes a BlobStore as a parameter and returns a WriteContext. WriteContext contains the file handle of just created blob among other things. All the new blobs are created in the \textit{tmp} folder. We use Version 4 UUID~\cite{leach2005universally} to give unique names to the newly created blobs.
 
 \section{Writing to a Blob}
-We only allow to add new data to the end of a given blob. We provide \texttt{writePartial} method for this. \texttt{writePartial} takes a blob and a WriteContext as arguments and appends the given blob to the WriteContext's blob.
+We only allow to add new data at the end of a given blob. We provide \texttt{writePartial} method for this. \texttt{writePartial} takes a blob and a WriteContext as arguments and appends the given blob to the WriteContext's blob.
 Once all the data has been written to the blob, \texttt{finalizeWrite} is called. \texttt{finalizeWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. We also rename the file to SHA-512 hash of it's contents.
-\texttt{finalizeWrite} returns a BlobId. This BlobId contains the location of the blob.
+\texttt{finalizeWrite} returns a BlobId. This BlobId contains the location of the blob. No more updates to the blob are possible after calling \texttt{finalizeWrite}.
 
 \section{Reading from Blob}
 Reading is also sequential. First the \texttt{initRead} method is called which returns a ReadContext, similar to the WriteContext. ReadContext also contains the file handle of the blob which is opened in read mode.
@@ -26,6 +31,7 @@ Reading is also sequential. First the \texttt{initRead} method is called which r
     \noalign{\smallskip}
     \hline
     \noalign{\smallskip}
+    \texttt{initBlobStore} & Initializes given directory to be used as a BlobStore \\
     \texttt{createBlob} & Creates a blob in the given BlobStore\\
     \texttt{writePartial} & Takes a blob and appends it to the end of the blob given in the argument\\
     \texttt{finalizeWrite} & Takes a WriteContext as input and returns a BlobId \\
