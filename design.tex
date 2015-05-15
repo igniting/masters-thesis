@@ -1,10 +1,10 @@
 \chapter{Design}
 \label{chap:design}
 
-Our design is inspired from the maildir format~\cite{bernstein1995using}. maildir format stores each message in a separate file with a unique name. All the partially delivered mails are stored in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory it moves them to \textit{cur}.
+Our design is inspired from the maildir format~\cite{bernstein1995using}. maildir format stores each message in a separate file with a unique name. All the partially delivered mails are stored in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{cur}.
 
 Similar to maildir, we also store all large objects in separate files. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
-The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{old}. We will discuss purpose of this directories later in this chapter.
+The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{old}. We will discuss purpose of these directories later in this chapter.
 
 \section{Initializing the BlobStore}
 Before starting to create blobs inside a directory, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created. We provide a method \texttt{initBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
@@ -14,7 +14,7 @@ We provide a method called \texttt{createBlob} for creating a new blob. It takes
 
 \section{Writing to a Blob}
 We only allow to add new data at the end of a given blob. We provide \texttt{writePartial} method for this. \texttt{writePartial} takes a blob and a WriteContext as arguments and appends the given blob to the WriteContext's blob.
-Once all the data has been written to the blob, \texttt{finalizeWrite} is called. \texttt{finalizeWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. We also rename the file to SHA-512 hash of it's contents.
+Once all the data has been written to the blob, \texttt{finalizeWrite} is called. \texttt{finalizeWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. We also rename the file to SHA-512 hash of its contents.
 \texttt{finalizeWrite} returns a BlobId. This BlobId contains the location of the blob. No more updates to the blob are possible after calling \texttt{finalizeWrite}.
 
 \section{Reading from Blob}
@@ -44,6 +44,19 @@ Reading is also sequential. First the \texttt{initRead} method is called which r
 \end{table}
 
 \section{Garbage Collection}
+It is quite likely that the same blob would be shared by multiple ``values'' in the database. For a relational database these values are rows in a table, while for a document-oriented database, these values are documents.
+Hence, we provide an interface for garbage collecting the deleted documents.
+
+\subsection{Starting the Garbage Collection}
+The \texttt{startGC} method takes a BlobStore as argument and starts garbage collection (GC) for that BlobStore.
+\texttt{startGC} does two things: It first renames the \textit{curr} folder to \textit{old} and then creates an empty \textit{curr} folder.
+Once a GC has started you can not start another GC on the same BlobStore until the first one finishes - doing so will throw an error. Also, note that creation of new blobs and reading the old blobs can happen concurrently with the GC.
+
+\subsection{Marking a blob as accessible}
+Once a blob is marked as not deleted using the method \texttt{markBlobAsAccessible}, we move it from the \textit{old} folder to the \textit{curr} folder. This ensures that the blob does not get deleted at the end of the GC.
+
+\subsection{End Garbage collection}
+This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument and delete the \textit{old} subdirectory along with its contents.
 
 \begin{table}[hbt]
 \caption{Interface for garbage collection}
