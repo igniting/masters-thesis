@@ -17,6 +17,18 @@ We only allow to add new data at the end of a given blob. We provide \texttt{wri
 Once all the data has been written to the blob, \texttt{finalizeWrite} is called. \texttt{finalizeWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. We also rename the file to SHA-512 hash of its contents.
 \texttt{finalizeWrite} returns a BlobId. This BlobId contains the location of the blob. No more updates to the blob are possible after calling \texttt{finalizeWrite}.
 
+\begin{figure}[hbt]
+  \caption{Directory structure of a BlobStore}
+  \label{fig:blobstore-dirstructure}
+  \dirtree{%
+    .1 blobstore.
+    .2 tmp.
+    .3 f66affb7-ad10-4583-8986-c4a6892d0120.
+    .2 curr.
+    .3 sha512-a75ebf9a0f109288d3eae1ecbfd89....
+  }
+\end{figure}
+
 \section{Reading from Blob}
 Reading is also sequential. First the \texttt{initRead} method is called which returns a ReadContext, similar to the WriteContext. ReadContext also contains the file handle of the blob which is opened in read mode.
 \texttt{readPartial} takes a ReadContext and number of bytes as input and returns those number of bytes from the blob.
@@ -54,6 +66,20 @@ Once a GC has started you can not start another GC on the same BlobStore until t
 
 \subsection{Marking a blob as accessible}
 Once a blob is marked as not deleted using the method \texttt{markBlobAsAccessible}, we move it from the \textit{old} folder to the \textit{curr} folder. This ensures that the blob does not get deleted at the end of the GC.
+
+\begin{figure}[hbt]
+  \caption{Directory structure of a BlobStore during GC}
+  \label{fig:blobstore-dirstructure-gc}
+  \dirtree{%
+    .1 blobstore.
+    .2 tmp.
+    .3 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
+    .2 old.
+    .3 sha512-9b71d224bd62f3785d96d46ad3ea3....
+    .2 curr.
+    .3 sha512-11853df40f4b2b919d3815f64792e....
+  }
+\end{figure}
 
 \subsection{End Garbage collection}
 This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument and delete the \textit{old} subdirectory along with its contents.
