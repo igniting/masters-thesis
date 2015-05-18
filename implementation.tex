@@ -1,6 +1,40 @@
 \chapter{Implementation}
 \label{chap:implementation}
 
-In this section we will describe our implementation. We first start with brief introduction to functional programming with a focus on Haskell.
+In this section we will describe our implementation.
 
 \section{Functional Programming}
+In functional programming the fundamental operation is the application of
+functions to arguments. The main program itself is written as a function that
+receives the program's input as its arguments and delivers the program's output as its result ~\cite{hughes1989functional}.
+In this section we will discuss special characteristics and advantages of functional programming (Haskell in particular).
+
+\subsection{Referential Transparency}
+Functional programs contain no assignment statements, so variables, once given a value, never change. More generally, functional programs contain no side-effects at all. A functional call can have no effect other than to compute its result.
+This eliminates a major source of bugs, and also makes the order of execution irrelevant - since no side effect can change an expression's value, it can be evaluated at any time. Since expressions can be evaluated at any time, one can freely replace variables by their values and vice versa - that is, programs are ``referentially transparent''.
+
+\subsection{Statically typed}
+Every expression in Haskell has a type which is determined at compile time. All the types composed together by function application should match up. If they don't, the program will be rejected by the compiler.
+
+\subsection{Algebraic Data Types and Pattern Matching}
+An algebraic data type has one or more data constructors, and each data constructor can have zero or more arguments. These algebraic data types can be recursive too.
+We can define functions on algebraic data types using pattern matching. In pattern matching, we attempt to match values against patterns and, if so desired, bind variables to successful matches.
+
+\begin{program}
+  \caption{Pattern matching on algebraic data types}
+  \label{prog:shapes}
+  \inputminted{haskell}{hs/shapes.hs}
+\end{program}
+
+\subsection{Lazy Evaluation}
+In lazy evaluation, an expression is not evaluated until its value is needed. This implies that programs can compose very well. Laziness also allows us to construct infinite data structures. Consider this example of generating primes.
+
+\begin{program}
+  \caption{Program to generate list of primes}
+  \label{prog:list-of-primes}
+  \inputminted{haskell}{hs/primes.hs}
+\end{program}
+
+The \texttt{primes} method generates an infinite list of primes lazily. In the main method, we take first 10 primes from the list and print them. On running, the above program generates the correct output: \texttt{[2,3,5,7,11,13,17,19,23,29]}.
+
+Note that we did not specify the type of \texttt{primes} and \texttt{main}. In haskell, we don't have to explicitly write out every type. Types are inferred by unifying every type bidirectionally.
