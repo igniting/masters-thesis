@@ -8,14 +8,36 @@ The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \te
 
 \section{Initializing the BlobStore}
 Before starting to create blobs inside a directory, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created. We provide a method \texttt{initBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
+BlobStore is defined as a newtype. We don't expose the constructor for BlobStore, so the only way to get a BlobStore is by using the \texttt{initBlobStore}.
+
+\begin{program}
+  \caption{Definition of BlobStore}
+  \label{prog:defblobstore}
+  \inputminted{haskell}{hs/blobstore.hs}
+\end{program}
 
 \section{Creating a Blob}
-We provide a method called \texttt{createBlob} for creating a new blob. It takes a BlobStore as a parameter and returns a WriteContext. WriteContext contains the file handle of just created blob among other things. All the new blobs are created in the \textit{tmp} folder. We use Version 4 UUID~\cite{leach2005universally} to give unique names to the newly created blobs.
+We provide a method called \texttt{createBlob} for creating a new blob. It takes a BlobStore as a parameter and returns a WriteContext. WriteContext contains the file handle of just created blob among other things.
+
+\begin{program}
+  \caption{Definition of WriteContext}
+  \label{prog:defwritecontext}
+  \inputminted{haskell}{hs/writecontext.hs}
+\end{program}
+
+All the new blobs are created in the \textit{tmp} folder. We use Version 4 UUID~\cite{leach2005universally} to give unique names to the newly created blobs.
 
 \section{Writing to a Blob}
 We only allow to add new data at the end of a given blob. We provide \texttt{writePartial} method for this. \texttt{writePartial} takes a blob and a WriteContext as arguments and appends the given blob to the WriteContext's blob.
 Once all the data has been written to the blob, \texttt{finalizeWrite} is called. \texttt{finalizeWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. We also rename the file to SHA-512 hash of its contents.
-\texttt{finalizeWrite} returns a BlobId. This BlobId contains the location of the blob. No more updates to the blob are possible after calling \texttt{finalizeWrite}.
+\texttt{finalizeWrite} returns a BlobId. This BlobId contains the location of the blob.
+No more updates to the blob are possible after calling \texttt{finalizeWrite}.
+
+\begin{program}
+  \caption{Definition of BlobId}
+  \label{prog:defblobid}
+  \inputminted{haskell}{hs/blobid.hs}
+\end{program}
 
 \begin{figure}[hbt]
   \caption{Directory structure of a BlobStore}
@@ -31,6 +53,13 @@ Once all the data has been written to the blob, \texttt{finalizeWrite} is called
 
 \section{Reading from Blob}
 Reading is also sequential. First the \texttt{initRead} method is called which returns a ReadContext, similar to the WriteContext. ReadContext also contains the file handle of the blob which is opened in read mode.
+
+\begin{program}
+  \caption{Definition of ReadContext}
+  \label{fig:defreadcontext}
+  \inputminted{haskell}{hs/readcontext.hs}
+\end{program}
+
 \texttt{readPartial} takes a ReadContext and number of bytes as input and returns those number of bytes from the blob.
 
 \begin{table}[hbt]
@@ -64,9 +93,6 @@ The \texttt{startGC} method takes a BlobStore as argument and starts garbage col
 \texttt{startGC} does two things: It first renames the \textit{curr} folder to \textit{old} and then creates an empty \textit{curr} folder.
 Once a GC has started you can not start another GC on the same BlobStore until the first one finishes - doing so will throw an error. Also, note that creation of new blobs and reading the old blobs can happen concurrently with the GC.
 
-\subsection{Marking a blob as accessible}
-Once a blob is marked as not deleted using the method \texttt{markBlobAsAccessible}, we move it from the \textit{old} folder to the \textit{curr} folder. This ensures that the blob does not get deleted at the end of the GC.
-
 \begin{figure}[hbt]
   \caption{Directory structure of a BlobStore during GC}
   \label{fig:blobstore-dirstructure-gc}
@@ -80,6 +106,9 @@ Once a blob is marked as not deleted using the method \texttt{markBlobAsAccessib
     .3 sha512-11853df40f4b2b919d3815f64792e....
   }
 \end{figure}
+
+\subsection{Marking a blob as accessible}
+Once a blob is marked as not deleted using the method \texttt{markBlobAsAccessible}, we move it from the \textit{old} folder to the \textit{curr} folder. This ensures that the blob does not get deleted at the end of the GC.
 
 \subsection{End Garbage collection}
 This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument and delete the \textit{old} subdirectory along with its contents.

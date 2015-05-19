@@ -1,0 +1,1 @@
+newtype BlobStore = BlobStore FilePath
