@@ -1,4 +1,4 @@
-\chapter{Design}
+\chapter{Design and Implementation}
 \label{chap:design}
 
 Our design is inspired from the maildir format~\cite{bernstein1995using}. maildir format stores each message in a separate file with a unique name. All the partially delivered mails are stored in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{cur}.
