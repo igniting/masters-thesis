@@ -1,7 +1,7 @@
 \chapter{Design and Implementation}
 \label{chap:design}
 
-Our design is inspired from the maildir format~\cite{bernstein1995using}. maildir format stores each message in a separate file with a unique name. The mail user agent (MUA) does not have to worry about partially delivered mail: each message is safely written to disk in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{cur}.
+Our design is inspired from the maildir format~\cite{bernstein1995using}. The maildir format stores each message in a separate file with a unique name. The mail user agent (MUA) does not have to worry about partially delivered mail: each message is safely written to disk in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{cur}.
 
 Similar to maildir, we also store all large objects in separate files. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
 The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{old}. We will discuss purpose of these directories later in this chapter.
@@ -25,7 +25,7 @@ We provide a method called \texttt{createBlob} for creating a new blob. It takes
   \inputminted{haskell}{hs/writecontext.hs}
 \end{program}
 
-WriteContext contains the file handle of just created blob, a TempLocation and a hashCtx. TempLocation stores the base directory and the filename of just created blob. hashCtx is used to store the SHA-512 hash of the contents that has been written to the blob.
+WriteContext contains the file handle of just created blob, a TempLocation and a hashCtx. TempLocation stores the base directory and the filename of just created blob. The hashCtx is used to store the SHA-512 hash of the contents that has been written to the blob.
 
 All the new blobs are created in the \textit{tmp} folder. We use Version 4 UUID~\cite{leach2005universally} to give unique names to the newly created blobs.
 
@@ -63,6 +63,7 @@ Reading is also sequential. First the \texttt{initRead} method is called which t
 \end{program}
 
 \texttt{readPartial} takes a ReadContext and number of bytes as input and returns those number of bytes from the blob.
+While reading from a blob, you can skip ahead using the method \texttt{skipBytes}. \texttt{skipBytes} takes a ReadContext and number of bytes, \textit{b} as input and skips \textit{b} bytes ahead in the ReadContext.
 
 \begin{table}[hbt]
 \caption{Interface for operations on blob}
@@ -80,6 +81,7 @@ Reading is also sequential. First the \texttt{initRead} method is called which t
     \texttt{finalizeWrite} & Takes a WriteContext as input and returns a BlobId \\
     \texttt{initRead} & Takes a BlobId as input and returns a ReadContext \\
     \texttt{readPartial} & Reads a given number of bytes from a Blob \\
+    \texttt{skipBytes} & Skips ahead a given number of bytes in a Blob \\
     \texttt{finalizeRead} & Completes the read \\
     \hline
   \end{tabularx}
