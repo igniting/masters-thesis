@@ -91,7 +91,31 @@ While reading from a blob, you can skip ahead using the method \texttt{skipBytes
 \begin{figure}
   \caption{Order of operations on Blob}
   \label{fig:blob-operations-order}
-  \includegraphics[scale=0.5]{figures/blob_operations_order.png}
+  \begin{tikzpicture}[>=latex]
+    \tikzset{ block/.style= {draw, rectangle, align=center,minimum width=3cm,minimum height=1cm}
+    },
+    \node [block] (initBlobStore) {initBlobStore};
+    \node [block, right =1.5cm of initBlobStore] (createBlob) {createBlob};
+    \node [block, right =1.5cm of createBlob] (writePartial) {writePartial};
+    \node [block, right =1.5cm of writePartial] (finalizeWrite) {finalizeWrite};
+    \node [block, below =2.5cm of finalizeWrite] (initRead) {initRead};
+    \node [block, above left =0.5cm and 1.5cm of initRead] (readPartial) {readPartial};
+    \node [block, below left =0.5cm and 1.5cm of initRead] (skipBytes) {skipBytes};
+    \node [block, below left =0.5cm and 1.5cm of readPartial] (finalizeRead) {finalizeRead};
+
+    \path[draw,->] (initBlobStore) edge (createBlob)
+                   (createBlob) edge (writePartial)
+                   (writePartial) edge [loop above] (writePartial)
+                   (writePartial) edge (finalizeWrite)
+                   (finalizeWrite) edge (initRead)
+                   (initRead) edge (readPartial)
+                   (initRead) edge (skipBytes)
+                   (readPartial) edge [loop above] (readPartial)
+                   (skipBytes) edge [bend right] (readPartial)
+                   (readPartial) edge [bend right] (skipBytes)
+                   (readPartial) edge (finalizeRead)
+                   ;
+  \end{tikzpicture}
 \end{figure}
 
 \section{Garbage Collection}
