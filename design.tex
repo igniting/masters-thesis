@@ -88,6 +88,12 @@ While reading from a blob, you can skip ahead using the method \texttt{skipBytes
 \end{center}
 \end{table}
 
+\begin{figure}
+  \caption{Order of operations on Blob}
+  \label{fig:blob-operations-order}
+  \includegraphics[scale=0.5]{figures/blob_operations_order.png}
+\end{figure}
+
 \section{Garbage Collection}
 It is quite likely that the same blob would be shared by multiple ``values'' in the database. For a relational database these values are rows in a table, while for a document-oriented database, these values are documents.
 Hence, we provide an interface for garbage collecting the deleted blobs.
@@ -134,3 +140,6 @@ This step involves removal of all the blobs which are not accessible. The \textt
   \end{tabularx}
 \end{center}
 \end{table}
+
+\section{Concurrency}
+In this section we will describe how the design described above allows concurrent access on blobs across processes.
