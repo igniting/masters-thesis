@@ -34,4 +34,15 @@ In lazy evaluation, an expression is not evaluated until its value is needed. Th
 
 The \texttt{primes} method generates an infinite list of primes lazily. In the main method, we take first 10 primes from the list and print them. On running, the above program generates the correct output: \texttt{[2,3,5,7,11,13,17,19,23,29]}.
 
-Note that we did not specify the type of \texttt{primes} and \texttt{main}. In haskell, we don't have to explicitly write out every type. Types are inferred by unifying every type bidirectionally.
+Note that we did not specify the type of \texttt{primes} and \texttt{main}. In Haskell, we don't have to explicitly write out every type. Types are inferred by unifying every type bidirectionally.
+
+\section{Foreign Function Interface (FFI)}
+The Foreign Function Interface allows Haskell programs to cooperate with programs written in other languages. Haskell FFI is very easy to use. Consider an example of calling the power function (``pow'') of the libc.
+
+\begin{program}
+  \caption{Calling C's pow function from Haskell}
+  \label{prog:c-pow}
+  \inputminted{haskell}{hs/pow.hs}
+\end{program}
+
+When executed, this program calls the pow function of libc and prints the result 81.0.
