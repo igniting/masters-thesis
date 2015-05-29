@@ -4,7 +4,7 @@
 Our design is inspired from the maildir format~\cite{bernstein1995using}. The maildir format stores each message in a separate file with a unique name. The mail user agent (MUA) does not have to worry about partially delivered mail: each message is safely written to disk in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{cur}.
 
 Similar to maildir, we also store all large objects in separate files. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
-The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{old}. We will discuss purpose of these directories later in this chapter.
+The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{gc}. We will discuss purpose of these directories later in this chapter.
 
 \section{Initializing the BlobStore}
 Before starting to create blobs inside a directory, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created. We provide a method \texttt{initBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
@@ -92,7 +92,7 @@ While reading from a blob, you can skip ahead using the method \texttt{skipBytes
   \caption{Order of operations on Blob}
   \label{fig:blob-operations-order}
   \begin{tikzpicture}[>=latex]
-    \tikzset{ block/.style= {draw, rectangle, align=center,minimum width=3cm,minimum height=1cm}
+    \tikzset{ block/.style= {draw, rectangle, align=center, minimum width=3cm, minimum height=1cm}
     },
     \node [block] (initBlobStore) {initBlobStore};
     \node [block, right =1.5cm of initBlobStore] (createBlob) {createBlob};
@@ -124,7 +124,8 @@ Hence, we provide an interface for garbage collecting the deleted blobs.
 
 \subsection{Starting the Garbage Collection}
 The \texttt{startGC} method takes a BlobStore as argument and starts garbage collection (GC) for that BlobStore.
-\texttt{startGC} does two things: It first renames the \textit{curr} folder to \textit{old} and then creates an empty \textit{curr} folder.
+\texttt{startGC} does two things: It first creates the \textit{gc} folder and then creates empty files in the \textit{gc} folder corresponding to every blob in the \textit{curr} folder.
+We use the \texttt{readdir} system call to iterate through the contents of the \textit{curr} folder.
 Once a GC has started you can not start another GC on the same BlobStore until the first one finishes - doing so will throw an error. Also, note that creation of new blobs and reading the old blobs can happen concurrently with the GC.
 
 \begin{figure}[hbt]
@@ -134,18 +135,20 @@ Once a GC has started you can not start another GC on the same BlobStore until t
     .1 blobstore.
     .2 tmp.
     .3 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
-    .2 old.
-    .3 sha512-9b71d224bd62f3785d96d46ad3ea3....
+    .2 gc.
+    .3 sha512-11853df40f4b2b919d3815f64792e....
     .2 curr.
     .3 sha512-11853df40f4b2b919d3815f64792e....
+    .3 sha512-9b71d224bd62f3785d96d46ad3ea3....
   }
 \end{figure}
 
 \subsection{Marking a blob as accessible}
-Once a blob is marked as not deleted using the method \texttt{markBlobAsAccessible}, we move it from the \textit{old} folder to the \textit{curr} folder. This ensures that the blob does not get deleted at the end of the GC.
+Once a blob is marked as not deleted using the method \texttt{markAsAccessible}, we delete the file corresponding to that blob from \texttt{gc} directory. This ensures that the blob does not get deleted at the end of the GC.
 
 \subsection{End Garbage collection}
-This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument and delete the \textit{old} subdirectory along with its contents.
+This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument. It iterates over all files in the \textit{gc} directory and deletes the corresponding blob from the \textit{curr} directory.
+After this step finishes, \texttt{endGC} deletes the \textit{gc} directory along with its contents.
 
 \begin{table}[hbt]
 \caption{Interface for garbage collection}
@@ -158,7 +161,7 @@ This step involves removal of all the blobs which are not accessible. The \textt
     \hline
     \noalign{\smallskip}
     \texttt{startGC} & Starts garbage collection for the given BlobStore\\
-    \texttt{markBlobAsAccessible} & Marks the given blob as accessible\\
+    \texttt{markAsAccessible} & Marks the given blob as accessible\\
     \texttt{endGC} & Ends the garbage collection by removing all the unaccessible blobs\\
     \hline
   \end{tabularx}
