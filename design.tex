@@ -1,7 +1,7 @@
 \chapter{Design and Implementation}
 \label{chap:design}
 
-Our design is inspired from the maildir format~\cite{bernstein1995using}. The maildir format stores each message in a separate file with a unique name. The mail user agent (MUA) does not have to worry about partially delivered mail: each message is safely written to disk in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{cur}.
+Our design is inspired from the maildir format~\cite{bernstein1995using}. The maildir format stores each message in a separate file with a unique name. The mail user agent (MUA) does not have to worry about partially delivered mail: each message is safely written to disk in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{curr}.
 
 Similar to maildir, we also store all large objects in separate files. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
 The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{gc}. We will discuss purpose of these directories later in this chapter.
@@ -170,3 +170,14 @@ After this step finishes, \texttt{endGC} deletes the \textit{gc} directory along
 
 \section{Concurrency}
 In this section we will describe how the design described above allows concurrent access on blobs across processes.
+
+The \texttt{createBlob} creates an empty file in the \textit{tmp} folder. This method will never fail, as we ensure that the \textit{tmp} folder is always present.
+In \texttt{finalizeWrite}, we move the blob to \textit{curr} folder. We use the \texttt{rename} system call for this, which is atomic i.e. a partial file will never be read ~\cite{renamemanpage}.
+Before moving the blob to \textit{curr}, we mark it as accessible using \texttt{markAsAccessible}, otherwise it will get deleted when \texttt{endGC} is called.
+
+\texttt{startGC} first creates an empty \textit{gc} directory using \texttt{mkdir}. We rely on \texttt{mkdir} to be atomic i.e. if two processes try to create the \textit{gc} directory simultaneously, only one of them will succeed.
+This ensures that at any instance, only one GC can be running.
+We then traverse the \textit{curr} directory using \texttt{readdir} system call and create an empty file with same name in \textit{gc} directory. Note that \texttt{readdir} is not thread-safe. However, in our implementation only one GC will be running at any instance, thread safety of \texttt{readdir} is immaterial.
+
+In \texttt{endGC}, we traverse the \textit{gc} directory and delete the corresponding file from \textit{curr} directory. It might happen that a blob which was opened for reading by \texttt{initRead} gets deleted during \texttt{endGC}.
+We use the \texttt{unlink} system call for removing the file. \texttt{unlink} ensures that the file remains in existence until the last file descriptor referring to it is closed ~\cite{unlinkmanpage}.
