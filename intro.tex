@@ -12,7 +12,7 @@ MongoDB~\cite{chodorow2013mongodb} on the other hand is a document-oriented data
 
 Today's web applications also work with large files like images, music, videos etc. Size of these files can vary from few MBs to tens of GBs. The application developer can decide to store these files directly into the one of the databases mentioned above or store it as a file and save the filename in the database.
 
-In this thesis, we explore the second option and provide a simple interface written in \textit{Haskell} to store large files. We also provide an interface for garbage collection of deleted blobs. We try to provide concurrency without using locks as much as possible.
+In this thesis, we explore the second option and provide a simple interface written in \textit{Haskell} to store large binary objects or blobs (\textbf{B}inary \textbf{L}arge \textbf{OB}jects). We also provide an interface for garbage collection of deleted blobs. We try to provide concurrency without using locks as much as possible.
 
 \section{Organization of the thesis}
 Chapter 2 discusses the approach of storing large files in databases. It also provides a background for this thesis work. In Chapter 3, we give a brief introduction to functional programming. Chapter 4 describes our design and implementation. We conclude and present the future work in Chapter 5.

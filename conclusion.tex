@@ -1,2 +1,13 @@
 \chapter{Conclusion}
 \label{chap:conclusion}
+
+\section{Summary}
+In this thesis we described our design and implementation of Bloc - a library for handling large binary objects.
+We also describe how our design achieves concurrency without using any locks.
+
+\section{Future Work}
+Currently our code uses several functions which are supported only on POSIX.
+This means that our library will not work on Windows. In future, we might look
+into adding support for Windows.
+
+We are also working on creating a key-value store like Bitcask. We plan to add support for storing \texttt{BlobIds} provided by our library as a value in the key-value store.
