@@ -2,12 +2,13 @@
 \label{chap:conclusion}
 
 \section{Summary}
-In this thesis we described our design and implementation of Bloc - a library for handling large binary objects.
-We also describe how our design achieves concurrency without using any locks.
+In this thesis we described our design and implementation of Bloc - a library for handling large binary objects written in Haskell. We give a brief introduction to functional programming and describe various features of Haskell which we used in our implementation.
+
+We also describe why programming with locks is difficult and how our design achieves concurrency without using any locks at the application level.
 
 \section{Future Work}
-Currently our code uses several functions which are supported only on POSIX.
-This means that our library will not work on Windows. In future, we might look
-into adding support for Windows.
+Currently our code uses several functions which are supported only on POSIX compliant file systems. This means that our library will not work on Windows. In the future, we might look into adding support for Windows.
 
-We are also working on creating a key-value store like Bitcask. We plan to add support for storing \texttt{BlobIds} provided by our library as a value in the key-value store.
+We are also working on creating a key-value store like Bitcask ~\cite{sheehy2010bitcask}. We plan to add support for storing \texttt{BlobIds} provided by our library as a value in the key-value store.
+
+Proving that a system is concurrent and will work under all circumstances is very tough. In this thesis, we tried to give an ``informal'' explanation of various situations where we handle concurrency. In the future, we will try to give a formal proof of concurrency of our design.
