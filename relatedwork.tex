@@ -1,9 +1,11 @@
-\chapter{Related Work}
+\chapter{Related Work and Background}
 \label{chap:relatedwork}
+
+\section{Storing large objects}
 
 Large object files can either be stored directly in a database or we can store the path to the binary file and other metadata. In this section we will discuss few examples of both. We will also discuss merits and demerits of both the approaches.
 
-\section{Storing large objects in database}
+\subsection{Storing large objects in database}
 
 Exodus was one of the first databases to support storage of large object files~\cite{carey1986object}. It used B+ tree index on byte position within the object plus a collection of leaf (data) blocks. Exodus allowed searching for a range of bytes, inserting a sequence of bytes at a given point in the object, appending a sequence of bytes at the end of the object and to delete a sequence of bytes from a given point in the object.
 
@@ -11,17 +13,53 @@ Popular relational databases like MySQL and PostgreSQL both provide data types t
 
 PostgreSQL also provides a BLOB data type which is quite different from MySQL's BLOB data type. It's implementation breaks large objects up into ``chunks'' and stores the chunks in rows in the database. A B-tree index guarantees fast searches for the correct chunk number when doing random access reads and writes.
 
-A similar idea is used by MongoDB, which is a document database. It also divides the large object into ``chunks''. It uses GridFS specification for this~\cite{hows2014gridfs}. GridFS works by storing the information about the file (called metadata) in the files collection. The data itself is broken down into pieces called chunks that are stored in the chunks collection.
+A similar idea is used by MongoDB, which is a document database. It also divides the large object into ``chunks''. It uses GridFS specification for this~\cite{hows2014gridfs}. GridFS works by storing the information about the file (called metadata) in the ``files'' collection. The data itself is broken down into pieces called chunks that are stored in the ``chunks'' collection.
 
-\section{Storing metadata and filename in database}
+\subsection{Storing metadata and filename in database}
 
 Another approach to store large objects is to store only the filename and some metadata in the database. In this case the application has to take care of the all externally attached files as well as the security settings.
 
-\section{Comparison of both approaches}
+\subsection{Comparison of both approaches}
 Both the approaches have their own benefits and disadvantages.
 
-\subsection{Performance}
-When we just store the filename in database, we skip the database layer altogether during file read and write operations. In the paper To BLOB or Not To BLOB ~\cite{sears2007blob}, performance of SQL Server and NTFS has been compared. The results showed that the database gave higher throughputs for objects for relatively small size (< 1MB).
+\begin{itemize}
+  \item{\textbf{Performance}} \\
+    When we just store the filename in database, we skip the database layer altogether during file read and write operations. In the paper To BLOB or Not To BLOB ~\cite{sears2007blob}, performance of SQL Server and NTFS has been compared. The results showed that the database gave higher throughputs for objects for relatively small size (< 1MB).
 
-\subsection{Security}
-Security and access controls are simplified when the data is directly stored in the database. When accessing the files directly, security settings between file system and database are independent from each other.
+  \item{\textbf{Security}} \\
+    Security and access controls are simplified when the data is directly stored in the database. When accessing the files directly, security settings between file system and database are independent from each other.
+
+  \item{\textbf{ACID guarantees}} \\
+    ACID stands for Atomicity, Consistency, Isolation and Durability. All RDBMS give ACID guarantee on database transactions. If the large object is directly stored in a relational database, all the operations on it also offer ACID guarantees. If the large object is stored as a separate file, you don't get any such guarantee. Also, note that this point is not valid for NoSQL databases.
+\end{itemize}
+
+\section{Concurrency}
+Concurrency is a program-structuring technique in which there are multiple \textit{threads of control}. Concurrency is concerned with nondeterministic composition of programs (or their components).
+
+In many of the applications today, concurrency is a necessity. For example, a server-side application needs concurrency in order to manage multiple client interactions simultaneously.
+
+\subsection{Concurrent Programming Models}
+
+There are multiple concurrent programming models like: actors, shared memory and transactions. The traditional way of offering concurrency in a programming language is by using threads which operate on a shared memory. In this model, \textit{locks} are used to achieve mutual exclusion. However, there are several problems with using locks~\cite{jones2007beautiful}:
+
+\begin{itemize}
+  \item Taking too few locks - One might forget to take a lock, resulting into two variables modifying same variable simultaneously.
+  \item Taking too many locks - Taking too many locks might result into a deadlock or avoid concurrency altogether.
+  \item Taking locks in the wrong order - Acquiring locks in the wrong order can result into a deadlock.
+  \item Error recovery - It is difficult to guarantee that no error can leave the system in an inconsistent state.
+\end{itemize}
+
+The other two approaches try to avoid this problem of using locks. Actor model treats ``actors'' as the primitives of concurrent computation~\cite{hewitt1973universal}. It provides an approach to concurrency that is entirely based on passing messages between processes. In Erlang, which is used to build scalable real-time systems, actors are part of language itself~\cite{armstrong1993concurrent}.
+
+Software Transactional Memory (STM) is a technique for simplifying concurrent programming by allowing multiple state-changing operations to be grouped together and performed as a single atomic operation.
+
+Haskell supports all the above three concurrent programming models. However, in this thesis we try to achieve concurrency by having a design which uses ``atomic'' file operations provided by the operating system.
+
+\subsection{Atomicity of file operations}
+
+In this section, we talk about atomicity of operations on file systems which provide a POSIX-file system based view.
+
+We use the \texttt{rename} system call ~\cite{renamemanpage} for moving a file to a new destination. \texttt{rename} is atomic in the sense that if it is used to overwrite a file, it is atomically replaced, so that there is no point at which another process attempting to access the file will find it missing. Also, at any time, a process will not be able to read any ``partial'' file. This atomic property of \texttt{rename} is used by \textit{maildir} ~\cite{bernstein1995using}
+to maintain message integrity as messages are added.
+
+Another system call \texttt{mkdir}, which is used to create a new directory, is also atomic ~\cite{mkdirmanpage}. So, if two processes try to create the same directory simultaneously, only one of them will succeed and other will receive the ``EEXIST: path name already exists'' error.

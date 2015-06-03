@@ -7,8 +7,8 @@ Similar to maildir, we also store all large objects in separate files. All the l
 The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{gc}. We will discuss purpose of these directories later in this chapter.
 
 \section{Initializing the BlobStore}
-Before starting to create blobs inside a directory, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created. We provide a method \texttt{initBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
-BlobStore is defined as a newtype. We don't expose the constructor for BlobStore, so the only way to get a BlobStore is by using the \texttt{initBlobStore} method.
+Before starting to create blobs inside a directory, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created. We provide a method \texttt{openBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
+BlobStore is defined as a newtype. We don't expose the constructor for BlobStore, so the only way to get a BlobStore is by using the \texttt{openBlobStore} method.
 
 \begin{program}
   \caption{Definition of BlobStore}
@@ -16,8 +16,8 @@ BlobStore is defined as a newtype. We don't expose the constructor for BlobStore
   \inputminted{haskell}{hs/blobstore.hs}
 \end{program}
 
-\section{Creating a Blob}
-We provide a method called \texttt{createBlob} for creating a new blob. It takes a BlobStore as a parameter and returns a WriteContext.
+\section{Creating a new Blob}
+We provide a method called \texttt{newBlob} for creating a new blob. It takes a BlobStore as a parameter and returns a WriteContext.
 
 \begin{program}
   \caption{Definition of WriteContext}
@@ -31,9 +31,9 @@ All the new blobs are created in the \textit{tmp} folder. We use Version 4 UUID~
 
 \section{Writing to a Blob}
 We only allow to add new data at the end of a given blob. We provide \texttt{writePartial} method for this. \texttt{writePartial} takes a blob and a WriteContext as arguments and appends the given blob to the WriteContext's blob.
-Once all the data has been written to the blob, \texttt{finalizeWrite} is called. \texttt{finalizeWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. We also rename the file to SHA-512 hash of its contents.
-\texttt{finalizeWrite} returns a BlobId. This BlobId contains the location of the blob.
-No more updates to the blob are possible after calling \texttt{finalizeWrite}.
+Once all the data has been written to the blob, \texttt{endWrite} is called. \texttt{endWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. We also rename the file to SHA-512 hash of its contents.
+\texttt{endWrite} returns a BlobId. This BlobId contains the location of the blob.
+No more updates to the blob are possible after calling \texttt{endWrite}.
 
 \begin{program}
   \caption{Definition of BlobId}
@@ -54,7 +54,7 @@ No more updates to the blob are possible after calling \texttt{finalizeWrite}.
 \end{figure}
 
 \section{Reading from Blob}
-Reading is also sequential. First the \texttt{initRead} method is called which takes a BlobId as argument and returns a ReadContext. ReadContext also contains the file handle of the blob which is opened in read mode.
+Reading is also sequential. First the \texttt{startRead} method is called which takes a BlobId as argument and returns a ReadContext. ReadContext also contains the file handle of the blob which is opened in read mode.
 
 \begin{program}
   \caption{Definition of ReadContext}
@@ -75,14 +75,14 @@ While reading from a blob, you can skip ahead using the method \texttt{skipBytes
     \noalign{\smallskip}
     \hline
     \noalign{\smallskip}
-    \texttt{initBlobStore} & Initializes given directory to be used as a BlobStore \\
-    \texttt{createBlob} & Creates a blob in the given BlobStore\\
+    \texttt{openBlobStore} & Initializes given directory to be used as a BlobStore \\
+    \texttt{newBlob} & Creates a blob in the given BlobStore\\
     \texttt{writePartial} & Takes a blob and appends it to the end of the blob given in the argument\\
-    \texttt{finalizeWrite} & Takes a WriteContext as input and returns a BlobId \\
-    \texttt{initRead} & Takes a BlobId as input and returns a ReadContext \\
+    \texttt{endWrite} & Takes a WriteContext as input and returns a BlobId \\
+    \texttt{startRead} & Takes a BlobId as input and returns a ReadContext \\
     \texttt{readPartial} & Reads a given number of bytes from a Blob \\
     \texttt{skipBytes} & Skips ahead a given number of bytes in a Blob \\
-    \texttt{finalizeRead} & Completes the read \\
+    \texttt{endRead} & Completes the read \\
     \hline
   \end{tabularx}
 \end{center}
@@ -94,26 +94,26 @@ While reading from a blob, you can skip ahead using the method \texttt{skipBytes
   \begin{tikzpicture}[>=latex]
     \tikzset{ block/.style= {draw, rectangle, align=center, minimum width=3cm, minimum height=1cm}
     },
-    \node [block] (initBlobStore) {initBlobStore};
-    \node [block, right =1.5cm of initBlobStore] (createBlob) {createBlob};
-    \node [block, right =1.5cm of createBlob] (writePartial) {writePartial};
-    \node [block, right =1.5cm of writePartial] (finalizeWrite) {finalizeWrite};
-    \node [block, below =2.5cm of finalizeWrite] (initRead) {initRead};
-    \node [block, above left =0.5cm and 1.5cm of initRead] (readPartial) {readPartial};
-    \node [block, below left =0.5cm and 1.5cm of initRead] (skipBytes) {skipBytes};
-    \node [block, below left =0.5cm and 1.5cm of readPartial] (finalizeRead) {finalizeRead};
+    \node [block] (openBlobStore) {openBlobStore};
+    \node [block, right =1.5cm of openBlobStore] (newBlob) {newBlob};
+    \node [block, right =1.5cm of newBlob] (writePartial) {writePartial};
+    \node [block, right =1.5cm of writePartial] (endWrite) {endWrite};
+    \node [block, below =2.5cm of endWrite] (startRead) {startRead};
+    \node [block, above left =0.5cm and 1.5cm of startRead] (readPartial) {readPartial};
+    \node [block, below left =0.5cm and 1.5cm of startRead] (skipBytes) {skipBytes};
+    \node [block, below left =0.5cm and 1.5cm of readPartial] (endRead) {endRead};
 
-    \path[draw,->] (initBlobStore) edge (createBlob)
-                   (createBlob) edge (writePartial)
+    \path[draw,->] (openBlobStore) edge (newBlob)
+                   (newBlob) edge (writePartial)
                    (writePartial) edge [loop above] (writePartial)
-                   (writePartial) edge (finalizeWrite)
-                   (finalizeWrite) edge (initRead)
-                   (initRead) edge (readPartial)
-                   (initRead) edge (skipBytes)
+                   (writePartial) edge (endWrite)
+                   (endWrite) edge (startRead)
+                   (startRead) edge (readPartial)
+                   (startRead) edge (skipBytes)
                    (readPartial) edge [loop above] (readPartial)
                    (skipBytes) edge [bend right] (readPartial)
                    (readPartial) edge [bend right] (skipBytes)
-                   (readPartial) edge (finalizeRead)
+                   (readPartial) edge (endRead)
                    ;
   \end{tikzpicture}
 \end{figure}
@@ -171,13 +171,13 @@ After this step finishes, \texttt{endGC} deletes the \textit{gc} directory along
 \section{Concurrency}
 In this section we will describe how the design described above allows concurrent access on blobs across processes.
 
-The \texttt{createBlob} creates an empty file in the \textit{tmp} folder. This method will never fail, as we ensure that the \textit{tmp} folder is always present.
-In \texttt{finalizeWrite}, we move the blob to \textit{curr} folder. We use the \texttt{rename} system call for this, which is atomic i.e. a partial file will never be read ~\cite{renamemanpage}.
+The \texttt{newBlob} creates an empty file in the \textit{tmp} folder. This method will never fail, as we ensure that the \textit{tmp} folder is always present.
+In \texttt{endWrite}, we move the blob to \textit{curr} folder. We use the \texttt{rename} system call for this, which is atomic i.e. a partial file will never be read ~\cite{renamemanpage}.
 Before moving the blob to \textit{curr}, we mark it as accessible using \texttt{markAsAccessible}, otherwise it will get deleted when \texttt{endGC} is called.
 
 \texttt{startGC} first creates an empty \textit{gc} directory using \texttt{mkdir}. We rely on \texttt{mkdir} to be atomic i.e. if two processes try to create the \textit{gc} directory simultaneously, only one of them will succeed.
 This ensures that at any instance, only one GC can be running.
 We then traverse the \textit{curr} directory using \texttt{readdir} system call and create an empty file with same name in \textit{gc} directory. Note that \texttt{readdir} is not thread-safe. However, in our implementation only one GC will be running at any instance, thread safety of \texttt{readdir} is immaterial.
 
-In \texttt{endGC}, we traverse the \textit{gc} directory and delete the corresponding file from \textit{curr} directory. It might happen that a blob which was opened for reading by \texttt{initRead} gets deleted during \texttt{endGC}.
+In \texttt{endGC}, we traverse the \textit{gc} directory and delete the corresponding file from \textit{curr} directory. It might happen that a blob which was opened for reading by \texttt{startRead} gets deleted during \texttt{endGC}.
 We use the \texttt{unlink} system call for removing the file. \texttt{unlink} ensures that the file remains in existence until the last file descriptor referring to it is closed ~\cite{unlinkmanpage}.
