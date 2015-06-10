@@ -1,20 +1,34 @@
 \chapter{Design and Implementation}
 \label{chap:design}
 
-Our design is inspired from the maildir format~\cite{bernstein1995using}. The maildir format stores each message in a separate file with a unique name. The mail user agent (MUA) does not have to worry about partially delivered mail: each message is safely written to disk in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{curr}.
+Our design is inspired from the maildir format~\cite{bernstein1995using} which stores each message in a separate file with a unique name. The mail user agent (MUA) does not have to worry about partially delivered mail: each message is safely written to disk in the \textit{tmp} subdirectory before it is moved to \textit{new}. When a mail user agent process finds message in the \textit{new} subdirectory, it moves them to \textit{curr}.
 
-Similar to maildir, we also store all large objects in separate files. All the large objects of a database are stored under a single directory which we also call a ``BlobStore''.
-The BlobStore contains three subdirectories: \textit{tmp}, \textit{curr} and \textit{gc}. We will discuss purpose of these directories later in this chapter.
+Similar to maildir, we store all blobs in separate files. All the blobs of an application are stored under a single directory which is called a ``BlobStore''.
+Our library provides three operations on blobs - incremental writes, incremental reads and garbage collection (GC). We need an incremental interface for writing and reading as a blob might not fit entirely into the computer's main memory.
+Instead of providing a method for deleting the blob directly, we provide an interface for GC of all the deleted blobs, since the same blob might be shared by multiple records of a database.
+
+In this chapter, we discuss implementation of these three operations. We also discuss how our implementation provides a lock free concurrent access on blobs.
 
 \section{Initializing the BlobStore}
-Before starting to create blobs inside a directory, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created. We provide a method \texttt{openBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
-BlobStore is defined as a newtype. We don't expose the constructor for BlobStore, so the only way to get a BlobStore is by using the \texttt{openBlobStore} method.
+All the new blobs of a BlobStore are created inside a subdirectory named \textit{tmp}. After doing a series of incremental writes on a newly created blob, it is moved to another subdirectoy named \textit{curr}. Hence, before starting any operations in a BlobStore, we ensure that the \textit{tmp} and \textit{curr} subdirectories have already been created.
+We provide a method \texttt{openBlobStore} which takes the path of a directory which is to be used as BlobStore as argument and does the initialization for us.
+BlobStore is defined as a Haskell newtype. We don't expose the constructor for BlobStore, so the only way to get a BlobStore is by using the \texttt{openBlobStore} method.
+
+The \texttt{openBlobStore} method also creates a file named ``metadata'' in the \textit{curr} directory. Currently this file just contains the version
+number of our library. Creation on this file ensures that the \textit{curr} directory is never empty.
 
 \begin{program}
   \caption{Definition of BlobStore}
   \label{prog:defblobstore}
   \inputminted{haskell}{hs/blobstore.hs}
 \end{program}
+
+We use Haskell's \texttt{createDirectory} method to create \textit{tmp} and \textit{curr}, which internally uses \texttt{mkdir} system call.
+The POSIX specification of \texttt{mkdir}~\cite{mkdirposix} specifies that if a directory with same name already exists, ~\texttt{mkdir} should fail with EEXIST error.
+This guarantee makes concurrent calls to \texttt{openBlobStore} safe. If two processes try to call \texttt{openBlobStore} at the same time - only one of them will be able to create \textit{tmp} directory and similarly only one of them will be able to create the \textit{curr} directory.
+This ensures that any data present in \textit{tmp} or \textit{curr} is never lost by a call to \texttt{openBlobStore}.
+
+The \texttt{openBlobStore} method also does the recovery from a failed garbage collection. This is explained in more detail in the section \ref{recovercrashedgc}.
 
 \section{Creating a new Blob}
 We provide a method called \texttt{newBlob} for creating a new blob. It takes a BlobStore as a parameter and returns a WriteContext.
@@ -25,18 +39,19 @@ We provide a method called \texttt{newBlob} for creating a new blob. It takes a 
   \inputminted{haskell}{hs/writecontext.hs}
 \end{program}
 
-WriteContext contains the file handle of just created blob, a TempLocation and a hashCtx. TempLocation stores the base directory and the filename of just created blob. The hashCtx is used to store the SHA-512 hash of the contents that has been written to the blob.
+WriteContext contains the file handle of just created blob, a TempLocation and a hash context - hashCtx. TempLocation stores the base directory and the filename of the newly created blob. The hashCtx is used to store the SHA-512 hash of the contents that has been written to the blob during the incremental writes.
 
-All the new blobs are created in the \textit{tmp} folder. We use Version 4 UUID~\cite{leach2005universally} to give unique names to the newly created blobs.
+All the new blobs are created in the \textit{tmp} directory. We use Version 4 UUID~\cite{leach2005universally} to give unique names to the newly created blobs.
+Creation of new blobs is concurrent in the sense that if two processes call \texttt{newBlob} on a same BlobStore, both will be able to create new blobs successfully if the \textit{tmp} directory is always present. We had ensured the presence of \textit{tmp} directory in the \texttt{openBlobStore} method. Also, \textit{tmp} directory is never deleted by any of our operations.
 
 \section{Writing to a Blob}
-Since the blobs can be very large, it is possible that the entire blob will not fit in the main memory. Hence, we provide an incremental interface for writing to a blob.
+We only allow to add new data at the end of a given blob. \texttt{writePartial} takes the new data and a WriteContext as arguments and appends the new data to the WriteContext's blob.
 
-We only allow to add new data at the end of a given blob. \texttt{writePartial} takes a blob and a WriteContext as arguments and appends the given blob to the WriteContext's blob.
+Once all the data has been written to a blob, \texttt{endWrite} is called. \texttt{endWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} directory to \textit{curr} directory. Before moving the blob, we ensure that all the data has been written to disk by calling the \texttt{fdatasync} system call.
+We also call \texttt{fdatasync} on the \textit{curr} directory to ensure that even in a case of crash, the \textit{curr} directory contains the entry of the moved file.
 
-Once all the data has been written to the blob, \texttt{endWrite} is called. \texttt{endWrite} takes a WriteContext as argument and moves the blob from \textit{tmp} folder to \textit{curr} folder. Before moving the blob, we ensure that all the data has been written to disk by calling the \texttt{fsync} system call.
-
-In \texttt{endWrite}, we also rename the file to SHA-512 hash of its contents. Using hash of the contents as filename ensures that if multiple blobs have same contents, only one copy is stored. We also prefix the filename with the name of the hash function i.e. ``sha-512''. This is for future compatibility, in case we want to support other hash functions.
+In \texttt{endWrite}, we also rename the file to SHA-512 hash of its contents. Using hash of the contents as filename ensures that if multiple blobs have same contents, only one copy is stored. This also provides the benefit of verifying the file content at a later time - compute the SHA-512 hash of the contents and if does not match with the file name, data has been corrupted.
+We prefix the filename with the name of the hash function i.e. ``sha512''. This is for future compatibility, in case we want to support other hash functions.
 
 \texttt{endWrite} returns a BlobId. This BlobId contains the location of the blob. No more updates to the blob are possible after calling \texttt{endWrite}.
 
@@ -45,6 +60,11 @@ In \texttt{endWrite}, we also rename the file to SHA-512 hash of its contents. U
   \label{prog:defblobid}
   \inputminted{haskell}{hs/blobid.hs}
 \end{program}
+
+In \texttt{endWrite}, we move the blob to \textit{curr} directory using the \texttt{rename} system call, which is atomic~\cite{renamemanpage}. Before calling \texttt{rename}, we have to ensure that the \textit{curr} directory is present. We had created the \textit{curr} directory in the call to \texttt{openBlobStore}.
+However, \texttt{startGC} method described in \ref{startgc} renames the \textit{curr} directory to \textit{gc} directory and then creates an empty \textit{curr} directory. During this short interval of renaming \textit{curr} to \textit{gc} and creation of new \textit{curr}, all calls to \texttt{rename} in \texttt{endWrite} will fail.
+We solve this problem by taking the optimistic approach - we retry calling \texttt{rename} in \texttt{endWrite}. The maximum number of such retries can be specified by the user.
+
 
 \begin{figure}[hbt]
   \caption{Directory structure of a BlobStore}
@@ -55,11 +75,12 @@ In \texttt{endWrite}, we also rename the file to SHA-512 hash of its contents. U
     .3 f66affb7-ad10-4583-8986-c4a6892d0120.
     .2 curr.
     .3 sha512-a75ebf9a0f109288d3eae1ecbfd89....
+    .3 metadata.
   }
 \end{figure}
 
-\section{Reading from Blob}
-Similar to writes, reading is also incremental. First the \texttt{startRead} method is called which takes a BlobId as argument and returns a ReadContext. ReadContext contains the file handle of the blob which is opened in read mode.
+\section{Reading from Blob} \label{readblob}
+Similar to writes, reading of a blob is also incremental. First the \texttt{startRead} method is called which takes a BlobId as argument and returns a ReadContext. ReadContext contains the file handle of the blob which is opened in read mode.
 
 \begin{program}
   \caption{Definition of ReadContext}
@@ -69,7 +90,10 @@ Similar to writes, reading is also incremental. First the \texttt{startRead} met
 
 \texttt{readPartial} takes a ReadContext and number of bytes as input and returns those number of bytes from the blob.
 While reading from a blob, you can skip ahead using the method \texttt{skipBytes}. \texttt{skipBytes} takes a ReadContext and number of bytes, \textit{b} as input and skips \textit{b} bytes ahead in the ReadContext.
-The \texttt{endRead} method closes the open handle.
+The \texttt{endRead} method closes the handle which was opened by \texttt{startRead}.
+
+Usually the blob to be read is present in the \textit{curr} directory. However, during a GC, the blob might either be present in \textit{curr} or in \textit{gc} (Refer section \ref{garbagecollection} for details on GC). The \texttt{startRead} has to do three lookups in the worst case. It first tries to read from the \texttt{curr} directory.
+At this time, if the blob is not found in \texttt{curr} directory, it might be in the \texttt{gc} directory. However the process which is running GC might move the blob back to \texttt{curr} before \texttt{startRead} reads from GC. The final lookup happens in the \texttt{curr} directory.
 
 \begin{table}[hbt]
 \caption{Interface for operations on blob}
@@ -83,7 +107,7 @@ The \texttt{endRead} method closes the open handle.
     \noalign{\smallskip}
     \texttt{openBlobStore} & Initializes given directory to be used as a BlobStore \\
     \texttt{newBlob} & Creates a blob in the given BlobStore\\
-    \texttt{writePartial} & Takes a blob and appends it to the end of the blob given in the argument\\
+    \texttt{writePartial} & Takes data as input and appends it at the end of the blob given in the argument\\
     \texttt{endWrite} & Takes a WriteContext as input and returns a BlobId \\
     \texttt{startRead} & Takes a BlobId as input and returns a ReadContext \\
     \texttt{readPartial} & Reads a given number of bytes from a Blob \\
@@ -158,11 +182,16 @@ Blobs which can easily fit into the main memory, do not require the incremental 
 It is quite likely that the same blob would be shared by multiple ``values'' in the database. For a relational database these values are rows in a table, while for a document-oriented database, these values are documents.
 Hence, we provide an interface for garbage collecting the deleted blobs.
 
-\subsection{Starting the Garbage Collection}
-The \texttt{startGC} method takes a BlobStore as argument and starts garbage collection (GC) for that BlobStore.
-\texttt{startGC} does two things: It first creates the \textit{gc} folder and then creates empty files in the \textit{gc} folder corresponding to every blob in the \textit{curr} folder.
-We use the \texttt{readdir} system call to iterate through the contents of the \textit{curr} folder.
-Once a GC has started you can not start another GC on the same BlobStore until the first one finishes - doing so will throw an error. Also, note that creation of new blobs and reading the old blobs can happen concurrently with the GC.
+\subsection{Starting the Garbage Collection} \label{startgc}
+The \texttt{startGC} method takes a BlobStore as argument and starts GC for that BlobStore.
+The \texttt{startGC} method does three things:
+  \begin{enumerate}
+      \item Renames the \textit{curr} directory to \textit{gc}. \\
+        We use the \texttt{rename} system call to atomically move \textit{curr} to \texttt{gc}. If a \texttt{gc} directory is already present, \texttt{rename} will fail with EEXIST or ENOTEMPTY error~\cite{renamemanpage}. This ensures that we have only one GC running at any time.
+      \item Creates a new \textit{curr} directory. \\
+        We need to ensure that the \texttt{endWrite} method is able to move files to the \texttt{curr} directory.
+      \item Copy the metadata file from \textit{gc} to \textit{curr}. \\
+  \end{enumerate}
 
 \begin{figure}[hbt]
   \caption{Directory structure of a BlobStore during GC}
@@ -173,18 +202,27 @@ Once a GC has started you can not start another GC on the same BlobStore until t
     .3 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
     .2 gc.
     .3 sha512-11853df40f4b2b919d3815f64792e....
+    .3 metadata.
     .2 curr.
     .3 sha512-11853df40f4b2b919d3815f64792e....
     .3 sha512-9b71d224bd62f3785d96d46ad3ea3....
+    .3 metadata.
   }
 \end{figure}
 
 \subsection{Marking a blob as accessible}
-Once a blob is marked as not deleted using the method \texttt{markAsAccessible}, we delete the file corresponding to that blob from \texttt{gc} directory. This ensures that the blob does not get deleted at the end of the GC.
+Once a blob is marked as not deleted using the method \texttt{markAsAccessible}, we move the blob from the \textit{gc} directory to the \textit{curr} directory.
+We use the \texttt{rename} system call, which is atomic.
+We also call \texttt{fdatasync} system call on the file descriptor of the \textit{curr} directory to ensure that the \texttt{curr} directory contains an entry for the moved blob, even in case of a system crash.
 
 \subsection{End Garbage collection}
-This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument. It iterates over all files in the \textit{gc} directory and deletes the corresponding blob from the \textit{curr} directory.
-After this step finishes, \texttt{endGC} deletes the \textit{gc} directory along with its contents.
+This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument. It first deletes all the blobs in the \textit{gc} directory as well as the ``metadata'' file.
+
+The \texttt{endGC} method then waits for a user specified interval before deleting the \textit{gc} directory. This is done to restrict the number of lookups during \texttt{startRead} to 3 (Refer section \ref{readblob}). If we remove this wait, another GC can start and move back the blob which is being looked up \texttt{startRead} back to the \texttt{gc} directory.
+
+\subsection{Marking a list of blobs as accessible}
+Calling \texttt{endGC} without marking all the accessible blobs would lead to their deletion. To prevent such accidental calls, we provide a method \texttt{markAccessibleBlobs} which takes a list of BlobId as an argument. After calling \texttt{startGC}, \texttt{markAccessibleBlobs} marks all the blobs in input list as accessible and finally calls \texttt{endGC}.
+This method should be used only when the number of accessible blobs is small.
 
 \begin{table}[hbt]
 \caption{Interface for garbage collection}
@@ -204,16 +242,7 @@ After this step finishes, \texttt{endGC} deletes the \textit{gc} directory along
 \end{center}
 \end{table}
 
-\section{Concurrency}
-In this section we will describe how the design described above allows concurrent access on blobs across processes.
-
-The \texttt{newBlob} creates an empty file in the \textit{tmp} folder. This method will never fail, as we ensure that the \textit{tmp} folder is always present.
-In \texttt{endWrite}, we move the blob to \textit{curr} folder. We use the \texttt{rename} system call for this, which is atomic i.e. a partial file will never be read ~\cite{renamemanpage}.
-Before moving the blob to \textit{curr}, we mark it as accessible using \texttt{markAsAccessible}, otherwise it will get deleted when \texttt{endGC} is called.
-
-\texttt{startGC} first creates an empty \textit{gc} directory using \texttt{mkdir}. We rely on \texttt{mkdir} to be atomic i.e. if two processes try to create the \textit{gc} directory simultaneously, only one of them will succeed.
-This ensures that at any instance, only one GC can be running.
-We then traverse the \textit{curr} directory using \texttt{readdir} system call and create an empty file with same name in \textit{gc} directory. Note that \texttt{readdir} is not thread-safe. However, in our implementation only one GC will be running at any instance, thread safety of \texttt{readdir} is immaterial.
-
-In \texttt{endGC}, we traverse the \textit{gc} directory and delete the corresponding file from \textit{curr} directory. It might happen that a blob which was opened for reading by \texttt{startRead} gets deleted during \texttt{endGC}.
-We use the \texttt{unlink} system call for removing the file. \texttt{unlink} ensures that the file remains in existence until the last file descriptor referring to it is closed ~\cite{unlinkmanpage}.
+\subsection{Recovering from a crashed GC} \label{recovercrashedgc}
+A process which had started GC might crash before calling \texttt{endGC}. In this case no other process would be able to start a new GC as explained in section \ref{startgc}.
+To handle this, we always call \texttt{recoverFromGC} in \texttt{openBlobStore} method. The method \texttt{recoverFromGC} moves all the blobs from the \texttt{gc} directory back to the \texttt{curr} directory and deletes the \texttt{gc} directory.
+Note that \texttt{recoverFromGC} will nullify the effect of a GC which is currently running since it moves all blobs back to the \texttt{curr} directory - irrespective of whether they have been deleted or not.
