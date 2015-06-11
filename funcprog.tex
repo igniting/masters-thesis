@@ -7,11 +7,12 @@ receives the program's input as its arguments and delivers the program's output 
 In this section we will discuss special characteristics and advantages of functional programming (Haskell in particular).
 
 \section{Referential Transparency}
-Functional programs contain no assignment statements, so variables, once given a value, never change. More generally, functional programs contain no side-effects at all. A functional call can have no effect other than to compute its result.
-This eliminates a major source of bugs, and also makes the order of execution irrelevant - since no side effect can change an expression's value, it can be evaluated at any time. Since expressions can be evaluated at any time, one can freely replace variables by their values and vice versa - that is, programs are ``referentially transparent''.
+Functional programs contain no assignment statements, so variables, once given a value, never change. A function call can have no effect other than to compute its result. This eliminates a major source of bugs, and also makes the order of execution irrelevant - since no side effect can change an expression's value, it can be evaluated at any time. Since expressions can be evaluated at any time, one can freely replace variables by their values and vice versa - that is, programs are ``referentially transparent''.
 
 \section{Statically typed}
 Every expression in Haskell has a type which is determined at compile time. All the types composed together by function application should match up. If they don't, the program will be rejected by the compiler.
+
+In Haskell, we don't have to explicitly write out every type. Types are inferred by unifying every type bidirectionally.
 
 \section{Algebraic Data Types and Pattern Matching}
 An algebraic data type has one or more data constructors, and each data constructor can have zero or more arguments. These algebraic data types can be recursive too.
@@ -24,7 +25,7 @@ We can define functions on algebraic data types using pattern matching. In patte
 \end{program}
 
 \section{Lazy Evaluation}
-In lazy evaluation, an expression is not evaluated until its value is needed. This implies that programs can compose very well. Laziness also allows us to construct infinite data structures. Consider this example of generating primes.
+In lazy evaluation, an expression is not evaluated until its value is needed. This implies that programs can compose very well~\cite{hughes1989functional}. Laziness also allows us to construct infinite data structures. Consider this example of generating primes.
 
 \begin{program}
   \caption{Program to generate list of primes}
@@ -34,10 +35,8 @@ In lazy evaluation, an expression is not evaluated until its value is needed. Th
 
 The \texttt{primes} method generates an infinite list of primes lazily. In the main method, we take first 10 primes from the list and print them. On running, the above program generates the correct output: \texttt{[2,3,5,7,11,13,17,19,23,29]}.
 
-Note that we did not specify the type of \texttt{primes} and \texttt{main}. In Haskell, we don't have to explicitly write out every type. Types are inferred by unifying every type bidirectionally.
-
 \section{Foreign Function Interface (FFI)}
-The Foreign Function Interface allows Haskell programs to cooperate with programs written in other languages. Haskell FFI is very easy to use. Consider an example of calling the power function (``pow'') of the libc.
+The Foreign Function Interface allows Haskell programs to call functions written in other languages. Consider an example of calling the power function (``pow'') of the libc.
 
 \begin{program}
   \caption{Calling C's pow function from Haskell}
@@ -46,3 +45,4 @@ The Foreign Function Interface allows Haskell programs to cooperate with program
 \end{program}
 
 When executed, this program calls the pow function of libc and prints the result 81.0.
+FFI enables us to call system calls like \texttt{fsync} from Haskell.

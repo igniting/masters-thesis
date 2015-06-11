@@ -1,22 +1,18 @@
 \chapter{Introduction}
 \label{chap:intro}
 
-Most of the web applications today require to store some kind of data persistently. For a web application that handles student management - the data can be name, date of birth, photograph and other information about students.
+Most of the web applications today require to store some kind of data persistently. For a web application that handles student management - the data can be name, date of birth, photograph and other information about students. These web applications use one of the \textit{databases} to store their data. Database refers to a collection of information that exists overs a long period and a Database Management System (DBMS) is a tool for creating and managing large amount of data efficiently.
 
-These web applications use one of the \textit{databases} to store their data. Database refers to a collection of information that exists overs a long period and a Database Management System (DBMS) is a tool for creating and managing large amount of data efficiently.
+Early database management systems evolved from file systems. These database systems used tree-based and the graph-based models for describing the structure of the information in a database. Edgar F. Codd in his seminal paper~\cite{codd1970relational} proposed that database systems should present the user with a view of data organized as tables called relations, setting the foundation for popular relational databases like MySQL and PostgreSQL.
 
-Early database management systems evolved from file systems. These database systems used tree-based and the graph-based models for describing the structure of the information in a database. Database systems changed significantly following a famous paper written by Ted Codd in 1970~\cite{codd1970relational}. Codd proposed that database systems should present the user with a view of data organized as tables called relations. This paper was foundation for popular relational databases like MySQL and PostgreSQL.
-
-However, many of the web applications do not require the complex querying and management functionality offered by a Relational Database Management System (RDBMS). This among other reasons gave rise to NoSQL (Not only SQL) databases. These databases can be classified based on the data models used by them. Amazon's Dynamo~\cite{decandia2007dynamo} is a key-value store. In key-value stores records are stored and retrieved using a key that uniquely identifies the record.
-MongoDB~\cite{chodorow2013mongodb} on the other hand is a document-oriented database. Document-oriented databases are designed for managing document-oriented information, also known as semi-structured data.
+Many of the web applications do not require the complex querying and management functionality offered by a Relational Database Management System (RDBMS). This among other reasons gave rise to several NoSQL (Not only SQL) databases which can be classified based on the data models used by them. Amazon's Dynamo~\cite{decandia2007dynamo} is a key-value store in which records are stored and retrieved using a key that uniquely identifies the record.
+MongoDB~\cite{chodorow2013mongodb} on the other hand is a document-oriented database and is designed for managing semi-structured data. These NoSQL databases offer an important benefit of scalability and availability by sacrificing strong consistency guarantees offered by RDBMS.
 
 Today's web applications also work with large files like images, music, videos etc. Size of these files can vary from few MBs to tens of GBs. The application developer can decide to store these files directly into the one of the databases mentioned above or store it as a file and save the filename in the database. This large binary data is usually called a blob (\textbf{B}inary \textbf{L}arge \textbf{O}bject).
 
-In this thesis, we provide a simple interface written in \textit{Haskell} for handling blobs. We provide methods for incremental writing, incremental reading and garbage collection of deleted blobs.
+Concurrency plays an important part in building scalable and fault tolerant web applications. However, building concurrent systems usually requires working with locks and may result into issues like deadlock and starvation.
 
-Another important property of web applications is concurrency. Concurrency is a property of systems in which several computations are executing simultaneously, and potentially interacting with each other. Concurrency plays an important part in building scalable and fault tolerant web applications. However, building concurrent systems usually requires working with locks and may result into issues like deadlock and starvation.
-
-We provide an alternative to using locks at application level for concurrency. We make use of the atomic guarantees provided by the operating system on certain file operations to provide concurrency for our implementation.
+In this thesis, we provide a library written in \textit{Haskell} for handling blobs. The library provides methods for incremental writing, incremental reading and garbage collection of deleted blobs. By making use of the atomic guarantees provided by the file system on certain file operations, we provide lock free concurrent access to blobs.
 
 The name of our library ``Bloc'' stands for \textbf{B}inary \textbf{L}arge \textbf{O}bjects with \textbf{C}oncurrency, since it deals with blobs and provides support for concurrent operations.
 

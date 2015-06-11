@@ -4,11 +4,13 @@
 \section{Summary}
 In this thesis we described our design and implementation of Bloc - a library for handling large binary objects written in Haskell. We give a brief introduction to functional programming and describe various features of Haskell which we used in our implementation.
 
-We also describe why programming with locks is difficult and how our design achieves concurrency without using any locks at the application level.
+We also describe why programming with locks is difficult and how our design achieves concurrency by making use of certain atomic operations provided by the file systems.
 
 \section{Future Work}
 Currently our code uses several functions which are supported only on POSIX compliant file systems. This means that our library will not work on Windows. In the future, we might look into adding support for Windows.
 
-We are also working on creating a key-value store like Bitcask ~\cite{sheehy2010bitcask}. We plan to add support for storing \texttt{BlobIds} provided by our library as a value in the key-value store.
+We are also working on creating a key-value store like Bitcask ~\cite{sheehy2010bitcask}. We plan to add support for storing the blob ids provided by our library as a value in the key-value store.
 
-Proving that a system is concurrent and will work under all circumstances is very tough. In this thesis, we tried to give an ``informal'' explanation of various situations where we handle concurrency. In the future, we will try to give a formal proof of concurrency of our design.
+In this thesis, we tried to give an ``informal'' explanation of various situations where we handle concurrency. We plan to use \pi-calculus~\cite{milner1999communicating} to give a formal specification for our design and prove its correctness.
+
+We also plan to test our library by designing an in-memory file system in Haskell which supports the atomic file operations used by us. Using QuickCheck~\cite{claessen2011quickcheck} and the in-memory file system, we can formulate and test the properties of our library.

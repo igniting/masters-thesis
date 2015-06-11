@@ -63,7 +63,7 @@
 %--------------------------------------------------------------------%
 % ABSTRACT
 \begin{abstract}
-  In this thesis, we describe a library for handling large binary objects (blob) written in Haskell - a purely-functional programming language. We use the idea of storing each blob as a separate file. We also try to make all the operations on a blob to be safe under concurrent access without using any locks. We leverage many features offered by Haskell like modularity and strong type system.
+  In this thesis, we describe a library for handling large binary objects (blob) written in Haskell - a purely-functional programming language. In our design, each blob is stored in a separate file. Lock free concurrent access to blobs is provided by making use of certain atomic operations supported by the underlying file system. We leverage many features offered by Haskell like modularity and strong type system.
 
 \end{abstract}
 
