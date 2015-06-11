@@ -39,7 +39,7 @@ We provide a method called \texttt{newBlob} for creating a new blob. It takes a 
   \inputminted{haskell}{hs/writecontext.hs}
 \end{program}
 
-WriteContext contains the file handle of just created blob, a value of type \texttt{TempLocation} and a hash context. The \texttt{TempLocation} type stores the base directory and the filename of the newly created blob. The hash context is used to store the SHA-512 hash of the contents that has been written to the blob during the incremental writes.
+The \texttt{WriteContext} type contains the file handle of just created blob, a value of type \texttt{TempLocation} and a hash context. The \texttt{TempLocation} type stores the base directory and the filename of the newly created blob. The hash context is used to store the SHA-512 hash of the contents that has been written to the blob during the incremental writes.
 
 All the new blobs are created in the \textit{tmp} directory. We use Version 4 UUID~\cite{leach2005universally} to give unique names to the newly created blobs.
 Creation of new blobs is concurrent in the sense that if two processes call \texttt{newBlob} on a same BlobStore, both will be able to create new blobs successfully if the \textit{tmp} directory is always present. We had ensured the presence of \textit{tmp} directory in the \texttt{openBlobStore} method. Also, \textit{tmp} directory is never deleted by any of our operations.

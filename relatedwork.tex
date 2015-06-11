@@ -23,7 +23,7 @@ Both the approaches have their own benefits and disadvantages.
 
 \begin{itemize}
   \item{\textbf{Performance}} \\
-    When we just store the filename in database, we skip the database layer altogether during file read and write operations. In the paper To BLOB or Not To BLOB ~\cite{sears2007blob}, performance of SQL Server and NTFS has been compared. The results showed that the database gave higher throughputs for objects for relatively small size (< 1MB).
+    When we just store the filename in database, we skip the database layer altogether during file read and write operations. In the paper To BLOB or Not To BLOB~\cite{sears2007blob}, performance of SQL Server and NTFS has been compared. The results showed that the database gave higher throughputs for objects for relatively small size (< 1MB).
 
   \item{\textbf{Security}} \\
     Security and access controls are simplified when the data is directly stored in the database. When accessing the files directly, security settings between file system and database are independent from each other.
@@ -52,7 +52,7 @@ The other two approaches try to avoid this problem of using locks. Actor model t
 
 Software Transactional Memory (STM) is a technique for simplifying concurrent programming by allowing multiple state-changing operations to be grouped together and performed as a single atomic operation.
 
-Haskell supports all the above three concurrent programming models. However, in this thesis we try to achieve concurrency by having a design which uses atomic file operations provided by the underlying file system.
+Haskell supports all the above three concurrent programming models. However, in this thesis we achieve concurrency by having a design which uses atomic file operations provided by the underlying file system.
 
 \subsection{Atomicity of file operations}
 
