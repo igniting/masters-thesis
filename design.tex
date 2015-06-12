@@ -47,7 +47,7 @@ Creation of new blobs is concurrent in the sense that if two processes call \tex
 \section{Writing to a blob}
 We only allow to add new data at the end of a given blob. The function \texttt{writePartial} takes the new data and a value of type \texttt{WriteContext} as arguments and appends the new data to the blob.
 
-Once all the data has been written to a blob, we call the \texttt{endWrite} method. The \texttt{endWrite} method takes a value of type \texttt{WriteContext} as argument and moves the blob from \textit{tmp} directory to \textit{curr} directory. Before moving the blob, we ensure that all the data has been written to disk by calling the \texttt{fdatasync} system call.
+Once all the data has been written to a blob, we call the \texttt{endWrite} method. The \texttt{endWrite} method moves the blob from \textit{tmp} directory to \textit{curr} directory. Before moving the blob, we ensure that all the data has been written to disk by calling the \texttt{fdatasync} system call.
 We also call \texttt{fdatasync} on the \textit{curr} directory to ensure that even in a case of crash, the \textit{curr} directory contains the entry of the moved file.
 
 In the \texttt{endWrite} method, we also rename the file to SHA-512 hash of its contents. Using hash of the contents as filename ensures that if multiple blobs have same contents, only one copy is stored. This also provides the benefit of verifying the file content at a later time - compute the SHA-512 hash of the contents and if does not match with the file name, data has been corrupted.
@@ -91,8 +91,8 @@ The \texttt{readPartial} method takes a value of type \texttt{ReadContext} and n
 While reading from a blob, you can skip ahead using the method \texttt{skipBytes}. The method \texttt{skipBytes} takes a value of type \texttt{ReadContext} and number of bytes, \textit{b} as input and skips \textit{b} bytes ahead in the blob.
 The \texttt{endRead} method closes the handle which was opened by \texttt{startRead}.
 
-Usually the blob to be read is present in the \textit{curr} directory. However, during a GC, the blob might either be present in \textit{curr} or in \textit{gc} (Refer section \ref{garbagecollection} for details on GC). The \texttt{startRead} method has to do three lookups in the worst case. It first tries to read from the \texttt{curr} directory.
-At this time, if the blob is not found in \texttt{curr} directory, it might be in the \texttt{gc} directory. However the process which is running GC might move the blob back to \texttt{curr} before \texttt{startRead} reads from GC. The final lookup happens in the \texttt{curr} directory.
+Usually the blob to be read is present in the \textit{curr} directory. However, during a GC, the blob might either be present in \textit{curr} or in \textit{gc} (Refer section \ref{garbagecollection} for details on GC). The \texttt{startRead} method has to do three lookups in the worst case. It first tries to read from the \textit{curr} directory.
+At this time, if the blob is not found in \textit{curr} directory, it might be in the \textit{gc} directory. However the process which is running GC might move the blob back to \textit{curr} before \texttt{startRead} reads from GC. The final lookup happens in the \texttt{curr} directory.
 
 \begin{table}
 \caption{Interface for operations on blob}
@@ -217,7 +217,7 @@ We also call \texttt{fdatasync} system call on the file descriptor of the \texti
 \subsection{End Garbage collection}
 This step involves removal of all the blobs which are not accessible. The \texttt{endGC} method takes a BlobStore as argument. It first deletes all the blobs in the \textit{gc} directory as well as the ``metadata'' file.
 
-The \texttt{endGC} method then waits for a user specified interval before deleting the \textit{gc} directory. This is done to restrict the number of lookups during \texttt{startRead} to 3 (Refer section \ref{readblob}). If we remove this wait, another GC can start and move back the blob which is being looked up \texttt{startRead} back to the \texttt{gc} directory.
+The \texttt{endGC} method then waits for a user specified interval before deleting the \textit{gc} directory. This is done to restrict the number of lookups during \texttt{startRead} to three (Refer section \ref{readblob}). If we remove this wait, another GC can start and move back the blob which is being looked up \texttt{startRead} back to the \textit{gc} directory, making our ``final'' lookup in \textit{curr} invalid.
 
 \subsection{Marking a list of blobs as accessible}
 Calling \texttt{endGC} without marking all the accessible blobs would lead to their deletion. To prevent such accidental calls, we provide a method \texttt{markAccessibleBlobs} which takes a list of BlobId as an argument. After calling \texttt{startGC}, \texttt{markAccessibleBlobs} marks all the blobs in input list as accessible and finally calls \texttt{endGC}.
@@ -243,5 +243,5 @@ This method should be used only when the number of accessible blobs is small.
 
 \subsection{Recovering from a crashed GC} \label{recovercrashedgc}
 A process which had started GC might crash before calling \texttt{endGC}. In this case no other process would be able to start a new GC as explained in section \ref{startgc}.
-To handle this, we always call \texttt{recoverFromGC} in \texttt{openBlobStore} method. The method \texttt{recoverFromGC} moves all the blobs from the \texttt{gc} directory back to the \texttt{curr} directory and deletes the \texttt{gc} directory.
-Note that \texttt{recoverFromGC} will nullify the effect of a GC which is currently running since it moves all blobs back to the \texttt{curr} directory - irrespective of whether they have been deleted or not.
+To handle this, we always call \texttt{recoverFromGC} in \texttt{openBlobStore} method. The method \texttt{recoverFromGC} moves all the blobs from the \textit{gc} directory back to the \textit{curr} directory and deletes the \textit{gc} directory.
+Note that \texttt{recoverFromGC} will nullify the effect of a GC which is currently running since it moves all blobs back to the \textit{curr} directory - irrespective of whether they are accessible or not.
