@@ -1,0 +1,76 @@
+\documentclass[10pt]{beamer}
+
+\usetheme{m}
+
+\usepackage{booktabs}
+\usepackage{fontawesome}
+\usepackage{tikz}
+\usetikzlibrary{arrows,positioning}
+
+\title{Bloc: Binary Large Objects with Concurrency}
+\subtitle{}
+\date{\today}
+\author{Anshu Avinash \\
+  Thesis supervisor: Piyush Kurur}
+\institute{Department of CSE, IIT Kanpur}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}
+  \frametitle{What is a blob?}
+
+  BLOB stands for ``\textbf{B}inary \textbf{L}arge \textbf{OB}ject''.
+  \begin{center}
+    \begin{tikzpicture}[>=latex]
+      \node (picture) {\Huge \faPicture};
+      \node [below =1cm of picture] (film) {\Huge \faFilm};
+      \node [below =1cm of film] (music) {\Huge \faMusic};
+      \node [below right =1cm and 2cm of picture] (database) {\Huge \faDatabase};
+
+      \path[draw,->] (picture) edge (database)
+      (film) edge (database)
+      (music) edge (database)
+      ;
+    \end{tikzpicture}
+  \end{center}
+
+\end{frame}
+
+\begin{frame}[allowframebreaks]
+  \frametitle{How to store blobs?}
+
+  \textbf {Store the entire content of the blob in the database.}
+  \begin{itemize}
+    \item PostgreSQL breaks large objects into ``chunks'' and these chunks are
+      stored in rows in the database.
+    \item MongoDB also divides large objects using the GridFS specification and stores
+      them in the ``chunks'' collection.
+  \end{itemize}
+
+  \framebreak
+
+  \textbf {Store the blob in a file and store the file name in the database.}
+  \begin{itemize}
+    \item Number and size of blobs are now limited only by the file system.
+    \item Requires to develop an interface to keep track of all the blobs of a database.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Here comes Bloc!}
+
+  We provide a library which will keep track of all the blobs stored in a database. \\
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Design}
+  \begin{itemize}[<+->]
+    \item All the blobs of a database are stored inside a directory which we also call a \alert{BlobStore}.
+    \item Each blob is a stored as a different file inside the BlobStore.
+  \end{itemize}
+\end{frame}
+
+\end{document}
