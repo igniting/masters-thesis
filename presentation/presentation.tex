@@ -6,6 +6,10 @@
 \usepackage{fontawesome}
 \usepackage{tikz}
 \usetikzlibrary{arrows,positioning}
+\usepackage{biblatex}
+\addbibresource{citations.bib}
+\usepackage{dirtree}
+\usepackage{minted}
 
 \title{Bloc: Binary Large Objects with Concurrency}
 \subtitle{}
@@ -68,9 +72,164 @@
 \begin{frame}
   \frametitle{Design}
   \begin{itemize}[<+->]
+    \item Our design is inspired from the maildir format~\footfullcite{bernstein1995using}.
     \item All the blobs of a database are stored inside a directory which we also call a \alert{BlobStore}.
-    \item Each blob is a stored as a different file inside the BlobStore.
+    \item Each blob is stored as a different file inside the BlobStore.
+    \item We provide an incremental interface for writing to a blob as well as reading from a blob.
   \end{itemize}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Creating a new blob}
+  \begin{minted}{haskell}
+  openBlobStore :: FilePath -> IO BlobStore
+  newBlob       :: BlobStore -> IO WriteContext
+  \end{minted}
+  \vspace{1cm}
+  \small
+  \dirtree{%
+    .1 \faFolderOpen \thinspace blobstore.
+    .2 \faFolderOpen \thinspace tmp.
+    .3 \faFile \thinspace 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
+    .3 \faFile \thinspace 4af0ac03-0b79-43fd-a2b0-2cc7c62947bc.
+  }
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Adding contents to a blob}
+  \begin{minted}{haskell}
+  writePartial :: WriteContext
+               -> Blob
+               -> IO WriteContext
+  endWrite     :: WriteContext -> IO BlobId
+  \end{minted}
+  \vspace{1cm}
+  \small
+  \dirtree{%
+    .1 \faFolderOpen \thinspace blobstore.
+    .2 \faFolderOpen \thinspace tmp.
+    .3 \faFile \thinspace 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
+    .2 \faFolderOpen \thinspace curr.
+    .3 \faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b...
+  }
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Reading from a blob}
+  \begin{minted}{haskell}
+  startRead   :: BlobId -> IO ReadContext
+  readPartial :: ReadContext -> Int -> IO Blob
+  skipBytes   :: ReadContext -> Integer -> IO ()
+  endRead     :: ReadContext -> IO ()
+  \end{minted}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Deleting blobs}
+  \begin{itemize}[<+->]
+    \item A blob can be shared by multiple ``records'' of the database.
+    \item We provide an interface for garbage collection of deleted blobs.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Starting a GC}
+  \begin{minted}{haskell}
+    startGC :: BlobStore -> IO ()
+  \end{minted}
+  \begin{columns}[T]
+    \begin{column}{.48\textwidth}
+      Before startGC
+      \tiny
+      \dirtree{%
+        .1 \faFolderOpen \thinspace blobstore.
+        .2 \faFolderOpen \thinspace tmp.
+        .3 \faFile \thinspace 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
+        .2 \faFolderOpen \thinspace curr.
+        .3 \faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b...
+        .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
+      }
+    \end{column}
+    \begin{column}{.48\textwidth}
+      After startGC
+      \tiny
+      \dirtree{%
+        .1 \faFolderOpen \thinspace blobstore.
+        .2 \faFolderOpen \thinspace tmp.
+        .2 \faFolderOpen \thinspace curr.
+        .3 \faFileAlt \thinspace sha512-39ca7ce9ecc69f696bf7d20bb23dd...
+        .2 \faFolderOpen \thinspace gc.
+        .3 \faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b...
+        .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Marking a blob as accessible}
+  \begin{minted}{haskell}
+  markAsAccessible :: BlobId -> IO ()
+  \end{minted}
+  \begin{columns}[T]
+    \begin{column}{.48\textwidth}
+      Before
+      \tiny
+      \dirtree{%
+        .1 \faFolderOpen \thinspace blobstore.
+        .2 \faFolderOpen \thinspace tmp.
+        .2 \faFolderOpen \thinspace curr.
+        .3 \faFileAlt \thinspace sha512-39ca7ce9ecc69f696bf7d20bb23dd...
+        .2 \faFolderOpen \thinspace gc.
+        .3 \alert{\faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b..}.
+        .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
+      }
+    \end{column}
+    \begin{column}{.48\textwidth}
+      After
+      \tiny
+      \dirtree{%
+        .1 \faFolderOpen \thinspace blobstore.
+        .2 \faFolderOpen \thinspace tmp.
+        .2 \faFolderOpen \thinspace curr.
+        .3 \faFileAlt \thinspace sha512-39ca7ce9ecc69f696bf7d20bb23dd...
+        .3 \alert{\faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b..}.
+        .2 \faFolderOpen \thinspace gc.
+        .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{Ending a GC}
+  \begin{minted}{haskell}
+    endGC :: BlobStore -> Int -> IO ()
+  \end{minted}
+  \begin{columns}[T]
+    \begin{column}{.48\textwidth}
+      Before
+      \tiny
+      \dirtree{%
+        .1 \faFolderOpen \thinspace blobstore.
+        .2 \faFolderOpen \thinspace tmp.
+        .2 \faFolderOpen \thinspace curr.
+        .3 \faFileAlt \thinspace sha512-39ca7ce9ecc69f696bf7d20bb23dd...
+        .3 \faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b...
+        .2 \faFolderOpen \thinspace gc.
+        .3 \alert{\faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae..}.
+      }
+    \end{column}
+    \begin{column}{.48\textwidth}
+      After
+      \tiny
+      \dirtree{%
+        .1 \faFolderOpen \thinspace blobstore.
+        .2 \faFolderOpen \thinspace tmp.
+        .2 \faFolderOpen \thinspace curr.
+        .3 \faFileAlt \thinspace sha512-39ca7ce9ecc69f696bf7d20bb23dd...
+        .3 \faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b...
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
 \end{document}
