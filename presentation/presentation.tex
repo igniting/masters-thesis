@@ -86,6 +86,7 @@
   newBlob       :: BlobStore -> IO WriteContext
   \end{minted}
   \vspace{1cm}
+  \pause
   \small
   \dirtree{%
     .1 \faFolderOpen \thinspace blobstore.
@@ -104,6 +105,7 @@
   endWrite     :: WriteContext -> IO BlobId
   \end{minted}
   \vspace{1cm}
+  \pause
   \small
   \dirtree{%
     .1 \faFolderOpen \thinspace blobstore.
@@ -135,8 +137,9 @@
 \begin{frame}[fragile]
   \frametitle{Starting a GC}
   \begin{minted}{haskell}
-    startGC :: BlobStore -> IO ()
+  startGC :: BlobStore -> IO ()
   \end{minted}
+  \pause
   \begin{columns}[T]
     \begin{column}{.48\textwidth}
       Before startGC
@@ -150,6 +153,7 @@
         .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
       }
     \end{column}
+    \pause
     \begin{column}{.48\textwidth}
       After startGC
       \tiny
@@ -171,6 +175,7 @@
   \begin{minted}{haskell}
   markAsAccessible :: BlobId -> IO ()
   \end{minted}
+  \pause
   \begin{columns}[T]
     \begin{column}{.48\textwidth}
       Before
@@ -185,6 +190,7 @@
         .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
       }
     \end{column}
+    \pause
     \begin{column}{.48\textwidth}
       After
       \tiny
@@ -203,8 +209,9 @@
 \begin{frame}[fragile]
   \frametitle{Ending a GC}
   \begin{minted}{haskell}
-    endGC :: BlobStore -> Int -> IO ()
+  endGC :: BlobStore -> IO ()
   \end{minted}
+  \pause
   \begin{columns}[T]
     \begin{column}{.48\textwidth}
       Before
@@ -219,6 +226,7 @@
         .3 \alert{\faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae..}.
       }
     \end{column}
+    \pause
     \begin{column}{.48\textwidth}
       After
       \tiny
@@ -231,5 +239,81 @@
       }
     \end{column}
   \end{columns}
+\end{frame}
+\begin{frame}
+  \frametitle{How does this design achieve concurrency?}
+  \pause
+  Using atomic file operations.
+  \pause
+  \begin{itemize}[<+->]
+    \item rename
+    \item mkdir
+  \end{itemize}
+  \vspace{1cm}
+  \onslide<5>{Let us revisit our design.}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{Creating a new blob (Part 2)}
+  \begin{minted}{haskell}
+  openBlobStore :: FilePath -> IO BlobStore
+  newBlob       :: BlobStore -> IO WriteContext
+  \end{minted}
+  \vspace{1cm}
+  \small
+  \dirtree{%
+    .1 \faFolderOpen \thinspace blobstore.
+    .2 \faFolderOpen \thinspace tmp.
+    .3 \faFile \thinspace 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
+    .3 \faFile \thinspace 4af0ac03-0b79-43fd-a2b0-2cc7c62947bc.
+  }
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Adding contents to a blob (Part 2)}
+  \begin{minted}{haskell}
+  writePartial :: WriteContext
+               -> Blob
+               -> IO WriteContext
+  endWrite     :: WriteContext -> IO BlobId
+  \end{minted}
+  \vspace{1cm}
+  \small
+  \dirtree{%
+    .1 \faFolderOpen \thinspace blobstore.
+    .2 \faFolderOpen \thinspace tmp.
+    .3 \faFile \thinspace 1a4c5091-1295-4c9c-b8d3-8e6123a51b41.
+    .2 \faFolderOpen \thinspace curr.
+    .3 \faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b...
+  }
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Reading from a blob (Part 2)}
+  \begin{minted}{haskell}
+  startRead   :: BlobId -> IO ReadContext
+  readPartial :: ReadContext -> Int -> IO Blob
+  skipBytes   :: ReadContext -> Integer -> IO ()
+  endRead     :: ReadContext -> IO ()
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{GC (Part 2)}
+  \begin{minted}{haskell}
+  startGC          :: BlobStore -> IO ()
+  markAsAccessible :: BlobId -> IO ()
+  endGC            :: BlobStore -> IO ()
+  \end{minted}
+  \vspace{0.5cm}
+  \tiny
+  \dirtree{%
+    .1 \faFolderOpen \thinspace blobstore.
+    .2 \faFolderOpen \thinspace tmp.
+    .2 \faFolderOpen \thinspace curr.
+    .3 \faFileAlt \thinspace sha512-39ca7ce9ecc69f696bf7d20bb23dd...
+    .2 \faFolderOpen \thinspace gc.
+    .3 \faFileAlt \thinspace sha512-861844d6704e8573fec34d967e20b...
+    .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
+  }
 \end{frame}
 \end{document}
