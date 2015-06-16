@@ -316,4 +316,41 @@
     .3 \faFileAlt \thinspace sha512-ee26b0dd4af7e749aa1a8ee3c10ae...
   }
 \end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Some helper functions}
+  \begin{minted}{haskell}
+  createBlob :: BlobStore -> Blob -> IO BlobId
+  \end{minted}
+  \pause
+  \begin{minted}{haskell}
+  readBlob :: BlobId -> IO Blob
+  \end{minted}
+  \pause
+  \begin{minted}{haskell}
+  markAccessibleBlobs :: BlobStore -> [BlobId] -> IO ()
+  \end{minted}
+  \pause
+  \begin{minted}{haskell}
+  recoverFromGC :: FilePath -> IO ()
+  \end{minted}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Providing durability}
+  \begin{itemize}[<+->]
+    \item fsync a file
+    \item fsync a directory
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Future Work}
+  \begin{itemize}[<+->]
+    \item Proving the correctness of our design
+    \item Writing a key-value store
+    \item Supporting bloc on non-POSIX systems
+  \end{itemize}
+\end{frame}
+
 \end{document}
